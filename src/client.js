@@ -10,6 +10,7 @@ var Msg = require("./models/msg");
 var Network = require("./models/network");
 var ircFramework = require("irc-framework");
 var Helper = require("./helper");
+var Settings = require("./clientSettings");
 
 module.exports = Client;
 
@@ -73,6 +74,7 @@ function Client(manager, name, config) {
 		name: name,
 		networks: [],
 		sockets: manager.sockets,
+		settings: new Settings(),
 		manager: manager
 	});
 
@@ -82,6 +84,10 @@ function Client(manager, name, config) {
 		client.updateToken(function(token) {
 			client.manager.updateUser(client.name, {token: token});
 		});
+
+		if ("settings" in config) {
+			this.settings.replace(config.settings);
+		}
 	}
 
 	var delay = 0;
@@ -95,6 +101,8 @@ function Client(manager, name, config) {
 	if (client.name) {
 		log.info(`User ${colors.bold(client.name)} loaded`);
 	}
+
+	this.settings.bindToClient(this);
 }
 
 Client.prototype.emit = function(event, data) {

@@ -236,10 +236,13 @@ function init(socket, client) {
 		);
 		socket.join(client.id);
 		socket.emit("init", {
+			settings: client.settings.options,
 			active: client.lastActiveChannel,
 			networks: client.networks,
 			token: client.config.token || null
 		});
+
+		client.settings.bindToSocket(socket);
 	}
 }
 
