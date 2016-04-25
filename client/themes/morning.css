@@ -37,6 +37,16 @@ body {
 	font-size: 13px;
 }
 
+#settings,
+#sign-in,
+#connect {
+	color: #ccc;
+}
+
+table.settings td {
+	color: inherit;
+}
+
 #chat .count {
 	background-color: #2e3642;
 }
@@ -50,7 +60,8 @@ body {
 #chat .from,
 #windows .header,
 #chat .user-mode:before,
-#chat .sidebar {
+#chat .sidebar,
+table.settings td {
 	border-color: #2a323d;
 }
 
