@@ -1,7 +1,7 @@
 // vendor libraries
 import "jquery-ui/ui/widgets/sortable";
 import $ from "jquery";
-import "fuzzy";
+import fuzzy from "fuzzy";
 import io from "socket.io-client";
 import Mousetrap from "mousetrap";
 import URI from "urijs";
