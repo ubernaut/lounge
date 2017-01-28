@@ -1179,6 +1179,10 @@ button {
 	content: "Users";
 }
 
+#chat .user-mode-search:before {
+	content: "Search Results";
+}
+
 #loading {
 	font-size: 14px;
 	z-index: 1;

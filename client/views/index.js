@@ -27,4 +27,5 @@ module.exports = {
 	toggle: require("./toggle.tpl"),
 	unread_marker: require("./unread_marker.tpl"),
 	user: require("./user.tpl"),
+	user_filtered: require("./user_filtered.tpl"),
 };
