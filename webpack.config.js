@@ -27,17 +27,19 @@ let config = {
 		publicPath: "/"
 	},
 	module: {
-		loaders: [
+		rules: [
 			{
 				test: /\.js$/,
 				include: [
 					path.resolve(__dirname, "client"),
 				],
-				loader: "babel",
-				query: {
-					presets: [
-						"es2015"
-					]
+				use: {
+					loader: "babel-loader",
+					options: {
+						presets: [
+							"es2015"
+						]
+					}
 				}
 			},
 			{
@@ -45,17 +47,22 @@ let config = {
 				include: [
 					path.resolve(__dirname, "client/views"),
 				],
-				loader: "handlebars-loader",
-				query: {
-					helperDirs: [
-						path.resolve(__dirname, "client/js/libs/handlebars")
-					],
-					extensions: [
-						".tpl"
-					],
+				use: {
+					loader: "handlebars-loader",
+					options: {
+						helperDirs: [
+							path.resolve(__dirname, "client/js/libs/handlebars")
+						],
+						extensions: [
+							".tpl"
+						],
+					}
 				}
 			},
 		]
+	},
+	externals: {
+		json3: "JSON", // socket.io uses json3.js, but we do not target any browsers that need it
 	},
 	plugins: [
 		new webpack.optimize.CommonsChunkPlugin("js/bundle.vendor.js")
@@ -67,13 +74,12 @@ let config = {
 // *********************************
 
 if (process.env.NODE_ENV === "production") {
-	config.plugins.push(new webpack.optimize.DedupePlugin());
 	config.plugins.push(new webpack.optimize.UglifyJsPlugin({
-		comments: false,
-		compress: {
-			warnings: false
-		}
+		sourceMap: true,
+		comments: false
 	}));
+} else {
+	console.log("Building in development mode, bundles will not be minified.");
 }
 
 module.exports = config;

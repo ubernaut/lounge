@@ -65,6 +65,7 @@ function Client(manager, name, config) {
 		config = {};
 	}
 	_.merge(this, {
+		awayMessage: "",
 		lastActiveChannel: -1,
 		attachedClients: {},
 		config: config,
@@ -246,22 +247,7 @@ Client.prototype.connect = function(args) {
 		}
 	}
 
-	network.irc = new ircFramework.Client();
-
-	network.irc.requestCap([
-		"echo-message",
-		"znc.in/self-message",
-	]);
-
-	events.forEach(plugin => {
-		var path = "./plugins/irc-events/" + plugin;
-		require(path).apply(client, [
-			network.irc,
-			network
-		]);
-	});
-
-	network.irc.connect({
+	network.irc = new ircFramework.Client({
 		version: pkg.name + " " + Helper.getVersion() + " -- " + pkg.homepage,
 		host: network.host,
 		port: network.port,
@@ -272,11 +258,27 @@ Client.prototype.connect = function(args) {
 		tls: network.tls,
 		localAddress: config.bind,
 		rejectUnauthorized: false,
+		enable_echomessage: true,
 		auto_reconnect: true,
 		auto_reconnect_wait: 10000 + Math.floor(Math.random() * 1000), // If multiple users are connected to the same network, randomize their reconnections a little
 		auto_reconnect_max_retries: 360, // At least one hour (plus timeouts) worth of reconnections
+		ping_interval: 0, // Disable client ping timeouts due to buggy implementation
 		webirc: webirc,
 	});
+
+	network.irc.requestCap([
+		"znc.in/self-message", // Legacy echo-message for ZNc
+	]);
+
+	events.forEach(plugin => {
+		var path = "./plugins/irc-events/" + plugin;
+		require(path).apply(client, [
+			network.irc,
+			network
+		]);
+	});
+
+	network.irc.connect();
 
 	client.save();
 };
@@ -334,6 +336,14 @@ Client.prototype.inputLine = function(data) {
 
 	// This is either a normal message or a command escaped with a leading '/'
 	if (text.charAt(0) !== "/" || text.charAt(1) === "/") {
+		if (target.chan.type === Chan.Type.LOBBY) {
+			target.chan.pushMessage(this, new Msg({
+				type: Msg.Type.ERROR,
+				text: "Messages can not be sent to lobbies."
+			}));
+			return;
+		}
+
 		text = "say " + text.replace(/^\//, "");
 	} else {
 		text = text.substr(1);
@@ -476,6 +486,16 @@ Client.prototype.clientAttach = function(socketId) {
 
 	client.attachedClients[socketId] = client.lastActiveChannel;
 
+	if (client.awayMessage && _.size(client.attachedClients) === 0) {
+		client.networks.forEach(function(network) {
+			// Only remove away on client attachment if
+			// there is no away message on this network
+			if (!network.awayMessage) {
+				network.irc.raw("AWAY");
+			}
+		});
+	}
+
 	// Update old networks to store ip and hostmask
 	client.networks.forEach(network => {
 		if (!network.ip) {
@@ -499,7 +519,19 @@ Client.prototype.clientAttach = function(socketId) {
 };
 
 Client.prototype.clientDetach = function(socketId) {
+	const client = this;
+
 	delete this.attachedClients[socketId];
+
+	if (client.awayMessage && _.size(client.attachedClients) === 0) {
+		client.networks.forEach(function(network) {
+			// Only set away on client deattachment if
+			// there is no away message on this network
+			if (!network.awayMessage) {
+				network.irc.raw("AWAY", client.awayMessage);
+			}
+		});
+	}
 };
 
 Client.prototype.save = _.debounce(function SaveClient() {
@@ -509,6 +541,7 @@ Client.prototype.save = _.debounce(function SaveClient() {
 
 	const client = this;
 	let json = {};
+	json.awayMessage = client.awayMessage;
 	json.networks = this.networks.map(n => n.export());
 	client.manager.updateUser(client.name, json);
 }, 1000, {maxWait: 10000});

@@ -1,19 +1,20 @@
-// vendor libraries
-import "jquery-ui/ui/widgets/sortable";
-import $ from "jquery";
-import fuzzy from "fuzzy";
-import io from "socket.io-client";
-import Mousetrap from "mousetrap";
-import URI from "urijs";
+"use strict";
+
+require("jquery-ui/ui/widgets/sortable");
+const $ = require("jquery");
+const fuzzy = require("fuzzy");
+const io = require("socket.io-client");
+const Mousetrap = require("mousetrap");
+const URI = require("urijs");
 
 // our libraries
-import "./libs/jquery/inputhistory";
-import "./libs/jquery/stickyscroll";
-import "./libs/jquery/tabcomplete";
-import helpers_parse from "./libs/handlebars/parse";
-import helpers_roundBadgeNumber from "./libs/handlebars/roundBadgeNumber";
-import slideoutMenu from "./libs/slideout";
-import templates from "../views";
+require("./libs/jquery/inputhistory");
+require("./libs/jquery/stickyscroll");
+require("./libs/jquery/tabcomplete");
+const helpers_parse = require("./libs/handlebars/parse");
+const helpers_roundBadgeNumber = require("./libs/handlebars/roundBadgeNumber");
+const slideoutMenu = require("./libs/slideout");
+const templates = require("../views");
 
 $(function() {
 	var path = window.location.pathname + "socket.io/";
@@ -365,7 +366,6 @@ $(function() {
 				lastDate = msgDate;
 			});
 		}
-
 	}
 
 	function renderChannelUsers(data) {
@@ -499,7 +499,6 @@ $(function() {
 
 			lastDate = msgDate;
 		});
-
 	});
 
 	socket.on("network", function(data) {
@@ -1183,7 +1182,6 @@ $(function() {
 					} catch (exception) {
 						// `new Notification(...)` is not supported and should be silenced.
 					}
-
 				}
 			}
 		}
@@ -1294,50 +1292,103 @@ $(function() {
 		);
 	});
 
+	forms.on("focusin", ".nick", function() {
+		// Need to set the first "lastvalue", so it can be used in the below function
+		var nick = $(this);
+		nick.data("lastvalue", nick.val());
+	});
+
 	forms.on("input", ".nick", function() {
 		var nick = $(this).val();
-		forms.find(".username").val(nick);
-	});
+		var usernameInput = forms.find(".username");
 
-	Mousetrap.bind([
-		"command+up",
-		"command+down",
-		"ctrl+up",
-		"ctrl+down"
-	], function(e, keys) {
-		var channels = sidebar.find(".chan");
-		var index = channels.index(channels.filter(".active"));
-		var direction = keys.split("+").pop();
-		switch (direction) {
-		case "up":
-			// Loop
-			var upTarget = (channels.length + (index - 1 + channels.length)) % channels.length;
-			channels.eq(upTarget).click();
-			break;
+		// Because this gets called /after/ it has already changed, we need use the previous value
+		var lastValue = $(this).data("lastvalue");
 
-		case "down":
-			// Loop
-			var downTarget = (channels.length + (index + 1 + channels.length)) % channels.length;
-			channels.eq(downTarget).click();
-			break;
+		// They were the same before the change, so update the username field
+		if (usernameInput.val() === lastValue) {
+			usernameInput.val(nick);
 		}
+
+		// Store the "previous" value, for next time
+		$(this).data("lastvalue", nick);
 	});
 
-	Mousetrap.bind([
-		"command+k",
-		"ctrl+shift+l"
-	], function(e) {
-		if (e.target === input[0]) {
-			clear();
-			e.preventDefault();
+	(function HotkeysScope() {
+		Mousetrap.bind([
+			"command+up",
+			"command+down",
+			"ctrl+up",
+			"ctrl+down"
+		], function(e, keys) {
+			var channels = sidebar.find(".chan");
+			var index = channels.index(channels.filter(".active"));
+			var direction = keys.split("+").pop();
+			switch (direction) {
+			case "up":
+				// Loop
+				var upTarget = (channels.length + (index - 1 + channels.length)) % channels.length;
+				channels.eq(upTarget).click();
+				break;
+
+			case "down":
+				// Loop
+				var downTarget = (channels.length + (index + 1 + channels.length)) % channels.length;
+				channels.eq(downTarget).click();
+				break;
+			}
+		});
+
+		Mousetrap.bind([
+			"command+shift+l",
+			"ctrl+shift+l"
+		], function(e) {
+			if (e.target === input[0]) {
+				clear();
+				e.preventDefault();
+			}
+		});
+
+		Mousetrap.bind([
+			"escape"
+		], function() {
+			contextMenuContainer.hide();
+		});
+
+		var colorsHotkeys = {
+			k: "\x03",
+			b: "\x02",
+			u: "\x1F",
+			i: "\x1D",
+			o: "\x0F",
+		};
+
+		for (var hotkey in colorsHotkeys) {
+			Mousetrap.bind([
+				"command+" + hotkey,
+				"ctrl+" + hotkey
+			], function(e) {
+				e.preventDefault();
+
+				const cursorPosStart = input.prop("selectionStart");
+				const cursorPosEnd = input.prop("selectionEnd");
+				const value = input.val();
+				let newValue = value.substring(0, cursorPosStart) + colorsHotkeys[e.key];
+
+				if (cursorPosStart === cursorPosEnd) {
+					// If no text is selected, insert at cursor
+					newValue += value.substring(cursorPosEnd, value.length);
+				} else {
+					// If text is selected, insert formatting character at start and the end
+					newValue += value.substring(cursorPosStart, cursorPosEnd) + colorsHotkeys[e.key] + value.substring(cursorPosEnd, value.length);
+				}
+
+				input
+					.val(newValue)
+					.get(0).setSelectionRange(cursorPosStart + 1, cursorPosEnd + 1);
+			});
 		}
-	});
-
-	Mousetrap.bind([
-		"escape"
-	], function() {
-		contextMenuContainer.hide();
-	});
+	}());
 
 	setInterval(function() {
 		chat.find(".chan:not(.active)").each(function() {

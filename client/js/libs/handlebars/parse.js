@@ -1,5 +1,7 @@
-import Handlebars from "handlebars/runtime";
-import URI from "urijs";
+"use strict";
+
+const Handlebars = require("handlebars/runtime");
+const URI = require("urijs");
 
 module.exports = function(text) {
 	text = Handlebars.Utils.escapeExpression(text);
@@ -48,7 +50,6 @@ var styleCheck_Re = /[\x00-\x1F]/,
 	colourKey = "\x03",
 	// breaks all open styles ^O (\x0F)
 	styleBreak = "\x0F";
-
 
 function styleTemplate(settings) {
 	return "<span class='" + settings.style + "'>" + settings.text + "</span>";
