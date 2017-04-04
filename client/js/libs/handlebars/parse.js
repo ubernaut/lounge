@@ -82,8 +82,8 @@ module.exports = function parse(text) {
 	const styleFragments = parseStyle(text);
 	const cleanText = styleFragments.map(fragment => fragment.text).join("");
 
-	const channelPrefixes = ["#", "&"]; // RPL_ISUPPORT.CHANTYPES
-	const userModes = ["!", "@", "%", "+"]; // RPL_ISUPPORT.PREFIX
+	const channelPrefixes = ["#", "&"]; // TODO Channel prefixes should be RPL_ISUPPORT.CHANTYPES
+	const userModes = ["!", "@", "%", "+"]; // TODO User modes should be RPL_ISUPPORT.PREFIX
 	const channelParts = findChannels(cleanText, channelPrefixes, userModes);
 
 	const linkParts = findLinks(cleanText);
