@@ -15,6 +15,7 @@ const helpers_parse = require("./libs/handlebars/parse");
 const helpers_roundBadgeNumber = require("./libs/handlebars/roundBadgeNumber");
 const slideoutMenu = require("./libs/slideout");
 const templates = require("../views");
+require("./networks");
 
 $(function() {
 	var path = window.location.pathname + "socket.io/";
