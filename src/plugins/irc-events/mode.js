@@ -46,7 +46,7 @@ module.exports = function(irc, network) {
 		}
 
 		let usersUpdated;
-		let userModeSortPriority = {};
+		const userModeSortPriority = {};
 		const supportsMultiPrefix = network.irc.network.cap.isEnabled("multi-prefix");
 
 		irc.network.options.PREFIX.forEach((prefix, index) => {

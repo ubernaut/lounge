@@ -541,7 +541,7 @@ Client.prototype.save = _.debounce(function SaveClient() {
 	}
 
 	const client = this;
-	let json = {};
+	const json = {};
 	json.awayMessage = client.awayMessage;
 	json.networks = this.networks.map(n => n.export());
 	client.manager.updateUser(client.name, json);

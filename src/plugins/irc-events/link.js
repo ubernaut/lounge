@@ -22,7 +22,7 @@ module.exports = function(client, chan, originalMsg) {
 		return;
 	}
 
-	let msg = new Msg({
+	const msg = new Msg({
 		type: Msg.Type.TOGGLE,
 		time: originalMsg.time,
 		self: originalMsg.self,
