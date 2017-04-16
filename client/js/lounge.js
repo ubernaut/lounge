@@ -17,10 +17,13 @@ const slideoutMenu = require("./libs/slideout");
 const templates = require("../views");
 
 $(function() {
-	if (!window.requestAnimationFrame) {
-		window.requestAnimationFrame = function(callback) {
-			callback();
+	let processOnIdle;
+	if (requestIdleCallback) {
+		processOnIdle = callback => {
+			requestIdleCallback(callback, {timeout: 2000});
 		};
+	} else {
+		processOnIdle = callback => callback();
 	}
 
 	var path = window.location.pathname + "socket.io/";
@@ -429,62 +432,74 @@ $(function() {
 	}
 
 	const messageQueue = [];
-	let waitingForNextQueue = true;
 
 	socket.on("msg", data => {
 		messageQueue.push(data);
 
-		if (waitingForNextQueue) {
-			waitingForNextQueue = false;
-			requestAnimationFrame(processReceivedMessages);
+		// const activeChannelId = chat.find(".chan.active").data("id");
+
+		if (messageQueue.length === 1) {
+			processOnIdle(processReceivedMessages);
 		}
 	});
 
 	function processReceivedMessages() {
-		waitingForNextQueue = true;
+		let previousTarget = null;
+		let previousContainer;
+		let previousMessage;
+		let documentFragment;
 
-		let data;
-		let counter = 0;
-
-		// TODO: sort queue by channels and process per-channel?
-		while ((data = messageQueue.shift()) !== undefined) {
-			var msg = buildChatMessage(data);
-			var target = "#chan-" + data.chan;
-			var container = chat.find(target + " .messages");
-
-			// Check if date changed
-			var prevMsg = $(container.find(".msg")).last();
-			var prevMsgTime = new Date(prevMsg.attr("data-time"));
-			var msgTime = new Date(msg.attr("data-time"));
-
-			// It's the first message in a channel/query
-			if (prevMsg.length === 0) {
-				container.append(templates.date_marker({msgDate: msgTime}));
+		// TODO: sorting too much
+		messageQueue.sort((a, b) => {
+			if (a.chan === b.chan) {
+				return a.msg.id - b.msg.id;
 			}
 
-			if (prevMsgTime.toDateString() !== msgTime.toDateString()) {
-				prevMsg.after(templates.date_marker({msgDate: msgTime}));
+			return a.chan - b.chan;
+		});
+
+		while (messageQueue[0] !== undefined) {
+			if (previousTarget !== null && previousTarget !== messageQueue[0].chan) {
+				processOnIdle(processReceivedMessages);
+				break;
+			}
+
+			const data = messageQueue.shift();
+			const msg = buildChatMessage(data);
+			const target = "#chan-" + data.chan;
+
+			if (previousTarget === null) {
+				previousTarget = data.chan;
+				previousContainer = chat.find(target + " .messages");
+				documentFragment = $(document.createDocumentFragment());
+
+				previousMessage = previousContainer.find(".msg").last();
+			}
+
+			// Check if date changed
+			const prevMsgTime = new Date(previousMessage.attr("data-time"));
+			const msgTime = new Date(msg.attr("data-time"));
+
+			if (previousMessage.length === 0 || prevMsgTime.toDateString() !== msgTime.toDateString()) {
+				documentFragment.append(templates.date_marker({msgDate: msgTime}));
 			}
 
 			// Add message to the container
-			container.append(msg);
+			previousMessage = msg;
+			documentFragment.append(msg);
 
 			if (data.msg.self) {
-				container
-					.find(".unread-marker")
-					.appendTo(container);
+				let unreadMarker = previousContainer.find(".unread-marker") || documentFragment.find(".unread-marker");
+
+				unreadMarker.appendTo(documentFragment);
 			} else {
 				notifyChannelMessage(target, data);
 			}
+		}
 
-			container.trigger("msg.sticky");
-
-			// TODO: bad
-			if (counter++ > 10) {
-				waitingForNextQueue = false;
-				requestAnimationFrame(processReceivedMessages);
-				break;
-			}
+		// TODO: Deal with >100 messages in channel
+		if (previousContainer) {
+			previousContainer.append(documentFragment).trigger("msg.sticky");
 		}
 	}
 
@@ -1182,6 +1197,8 @@ $(function() {
 		});
 	});
 
+	let lastNotificationSoundPlay = 0;
+
 	function notifyChannelMessage(target, msg) {
 		var unread = msg.unread;
 		msg = msg.msg;
@@ -1189,13 +1206,19 @@ $(function() {
 		var button = sidebar.find(".chan[data-target='" + target + "']");
 		if (msg.highlight || (options.notifyAllMessages && msg.type === "message")) {
 			if (!document.hasFocus() || !$(target).hasClass("active")) {
-				if (options.notification) {
+				const time = Date.now();
+
+				if (options.notification && (time - lastNotificationSoundPlay) > 500) {
+					// Fixes "The play() request was interrupted by a call to pause()"
+					lastNotificationSoundPlay = time;
+
 					try {
 						pop.play();
 					} catch (exception) {
 						// On mobile, sounds can not be played without user interaction.
 					}
 				}
+
 				toggleNotificationMarkers(true);
 
 				if (options.desktopNotifications && Notification.permission === "granted") {
