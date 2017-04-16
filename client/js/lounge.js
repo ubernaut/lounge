@@ -17,6 +17,12 @@ const slideoutMenu = require("./libs/slideout");
 const templates = require("../views");
 
 $(function() {
+	if (!window.requestAnimationFrame) {
+		window.requestAnimationFrame = function(callback) {
+			callback();
+		};
+	}
+
 	var path = window.location.pathname + "socket.io/";
 	var socket = io({
 		path: path,
@@ -422,39 +428,65 @@ $(function() {
 		}
 	}
 
-	socket.on("msg", function(data) {
-		var msg = buildChatMessage(data);
-		var target = "#chan-" + data.chan;
-		var container = chat.find(target + " .messages");
+	const messageQueue = [];
+	let waitingForNextQueue = true;
 
-        // Check if date changed
-		var prevMsg = $(container.find(".msg")).last();
-		var prevMsgTime = new Date(prevMsg.attr("data-time"));
-		var msgTime = new Date(msg.attr("data-time"));
+	socket.on("msg", data => {
+		messageQueue.push(data);
 
-		// It's the first message in a channel/query
-		if (prevMsg.length === 0) {
-			container.append(templates.date_marker({msgDate: msgTime}));
-		}
-
-		if (prevMsgTime.toDateString() !== msgTime.toDateString()) {
-			prevMsg.after(templates.date_marker({msgDate: msgTime}));
-		}
-
-        // Add message to the container
-		container
-			.append(msg)
-			.trigger("msg", [
-				target,
-				data
-			]);
-
-		if (data.msg.self) {
-			container
-				.find(".unread-marker")
-				.appendTo(container);
+		if (waitingForNextQueue) {
+			waitingForNextQueue = false;
+			requestAnimationFrame(processReceivedMessages);
 		}
 	});
+
+	function processReceivedMessages() {
+		waitingForNextQueue = true;
+
+		let data;
+		let counter = 0;
+
+		// TODO: sort queue by channels and process per-channel?
+		while ((data = messageQueue.shift()) !== undefined) {
+			var msg = buildChatMessage(data);
+			var target = "#chan-" + data.chan;
+			var container = chat.find(target + " .messages");
+
+			// Check if date changed
+			var prevMsg = $(container.find(".msg")).last();
+			var prevMsgTime = new Date(prevMsg.attr("data-time"));
+			var msgTime = new Date(msg.attr("data-time"));
+
+			// It's the first message in a channel/query
+			if (prevMsg.length === 0) {
+				container.append(templates.date_marker({msgDate: msgTime}));
+			}
+
+			if (prevMsgTime.toDateString() !== msgTime.toDateString()) {
+				prevMsg.after(templates.date_marker({msgDate: msgTime}));
+			}
+
+			// Add message to the container
+			container.append(msg);
+
+			if (data.msg.self) {
+				container
+					.find(".unread-marker")
+					.appendTo(container);
+			} else {
+				notifyChannelMessage(target, data);
+			}
+
+			container.trigger("msg.sticky");
+
+			// TODO: bad
+			if (counter++ > 10) {
+				waitingForNextQueue = false;
+				requestAnimationFrame(processReceivedMessages);
+				break;
+			}
+		}
+	}
 
 	socket.on("more", function(data) {
 		var documentFragment = buildChannelMessages(data.chan, data.messages);
@@ -1150,13 +1182,9 @@ $(function() {
 		});
 	});
 
-	chat.on("msg", ".messages", function(e, target, msg) {
+	function notifyChannelMessage(target, msg) {
 		var unread = msg.unread;
 		msg = msg.msg;
-
-		if (msg.self) {
-			return;
-		}
 
 		var button = sidebar.find(".chan[data-target='" + target + "']");
 		if (msg.highlight || (options.notifyAllMessages && msg.type === "message")) {
@@ -1219,7 +1247,7 @@ $(function() {
 		if (msg.highlight) {
 			badge.addClass("highlight");
 		}
-	});
+	}
 
 	chat.on("click", ".show-more-button", function() {
 		var self = $(this);
