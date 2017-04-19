@@ -295,6 +295,7 @@ $(function() {
 			"whois",
 			"ctcp",
 			"channel_list",
+			"ban_list",
 		].indexOf(type) !== -1) {
 			template = "msg_action";
 		} else if (type === "unhandled") {
