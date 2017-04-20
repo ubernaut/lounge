@@ -10,7 +10,7 @@ module.exports = {
 	// @type     boolean
 	// @default  true
 	//
-	public: true,
+	public: false,
 
 	//
 	// IP address or hostname for the web server to listen on.
@@ -64,7 +64,7 @@ module.exports = {
 	// @type     boolean
 	// @default  false
 	//
-	prefetch: false,
+	prefetch: true,
 
 	//
 	// Prefetch URLs Image Preview size limit
@@ -179,7 +179,7 @@ module.exports = {
 		// @type     string
 		// @default  "Freenode"
 		//
-		name: "Freenode",
+		name: "oftc",
 
 		//
 		// Host
@@ -187,7 +187,7 @@ module.exports = {
 		// @type     string
 		// @default  "chat.freenode.net"
 		//
-		host: "chat.freenode.net",
+		host: "irc.oftc.net",
 
 		//
 		// Port
@@ -227,7 +227,7 @@ module.exports = {
 		// @type     string
 		// @default  "lounge-user"
 		//
-		username: "lounge-user",
+		username: "dhd-user",
 
 		//
 		// Real Name
@@ -235,7 +235,7 @@ module.exports = {
 		// @type     string
 		// @default  "The Lounge User"
 		//
-		realname: "The Lounge User",
+		realname: "A Terrible Neckbeard",
 
 		//
 		// Channels
@@ -244,7 +244,7 @@ module.exports = {
 		// @type     string
 		// @default  "#thelounge"
 		//
-		join: "#thelounge"
+		join: "#dhd"
 	},
 
 	//
